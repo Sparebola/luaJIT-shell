@@ -1,0 +1,35 @@
+{
+  "name": "luajit-shell",
+  "version": "1.0.0",
+  "description": "Running LuaJIT scripts from Node.js | Bun via stdio",
+  "main": "dist/index.js",
+  "types": "dist/index",
+  "scripts": {
+    "start": "rimraf --glob dist && tsc -w",
+    "test": "rimraf --glob src\\test\\js && tsc src/test/uleb128.test.ts --target es6 --module commonjs --esModuleInterop --outDir src/test/js && jest src/test/js/test/uleb128.test.js"
+  },
+  "repository": {
+    "type": "git+https://github.com/Sparebola/luajit-shell.git",
+    "url": ""
+  },
+  "keywords": [
+    "luajit",
+    "lua"
+  ],
+  "author": "Sparebola",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/Sparebola/luajit-shell/issues"
+  },
+  "homepage": "https://github.com/Sparebola/luajit-shell#readme",
+  "files": [
+    "dist"
+  ],
+  "devDependencies": {
+    "@jest/globals": "^29.5.0",
+    "eslint": "^8.42.0",
+    "eslint-config-airbnb-typescript-prettier": "^5.0.0",
+    "prettier": "^2.8.8",
+    "typescript": "^5.1.3"
+  }
+}
