@@ -1,7 +1,7 @@
 {
   "name": "luajit-shell",
   "version": "1.0.0",
-  "description": "Running LuaJIT scripts from Node.js | Bun via stdio",
+  "description": "Running Lua | LuaJIT scripts from Node.js | Bun via stdio",
   "main": "dist/index.js",
   "types": "dist/index",
   "scripts": {
