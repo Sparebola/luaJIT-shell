@@ -15,7 +15,7 @@
     "strictNullChecks": true,
     "strict": true,
   },
-  "exclude": [
-    "src/test"
+  "include": [
+    "src"
   ]
 }
