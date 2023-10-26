@@ -1,4 +1,4 @@
-import { execSync, spawnSync } from "child_process";
+import { spawn, spawnSync } from "child_process";
 
 export interface LuaOptions {
   scriptPath: string;
@@ -7,33 +7,28 @@ export interface LuaOptions {
   args: string[];
 }
 
-const insertInterpretator = (path: string, luaPath?: LuaOptions["luaPath"]) => {
-  const inter = luaPath ?? "luajit";
-  return `${inter} ${path}`;
+const getInterpretator = (luaPath?: LuaOptions["luaPath"]) => {
+  return luaPath ?? "luajit21";
 };
 
 export const run = (scriptPath: string, options?: LuaOptions) => {
-  // console.log(scriptPath, options);
-  console.log(insertInterpretator(scriptPath, options?.luaPath));
-
-  // const result = spawnSync(insertInterpretator(scriptPath, options?.luaPath));
-  const result = spawnSync("lua", {
-    // env: process.env,
-    // env: {
-    //   PATH: process.env.PATH,
-    // },
-    // stdio: "pipe",
-    // shell: true,
-    // serialization: "advanced",
+  const result = spawnSync(getInterpretator(options?.luaPath), [scriptPath], {
     encoding: "utf8",
+    ...options,
   });
 
   return result;
 };
 
 export const runAsync = (scriptPath: string, options?: LuaOptions) => {
-  console.log(scriptPath, options);
-  return new Promise(() => {});
+  // console.log(scriptPath, options);
+  // return new Promise(() => {});
+  const result = spawn(getInterpretator(options?.luaPath), [scriptPath], {
+    // encoding: "utf8",
+    // ...options,
+  });
+
+  return result;
 };
 
 export const runString = (options?: LuaOptions) => {
