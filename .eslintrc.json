@@ -14,6 +14,7 @@
             0,
             "windows"
         ],
+        "lines-between-class-members": "off",
         "prettier/prettier": [
             "warn",
             {

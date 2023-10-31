@@ -1,7 +1,5 @@
 // eslint-disable-next-line max-classes-per-file
 import { spawn, spawnSync } from "child_process";
-import { Transform, TransformCallback } from "stream";
-import { EOL as newline } from "os";
 
 export interface LuaOptions {
   scriptPath?: string;
@@ -10,31 +8,23 @@ export interface LuaOptions {
   args?: string[];
 }
 
-export class LuaError extends Error {
+export interface LuaBody {
   status: number | null;
-
   signal: NodeJS.Signals | null;
-
-  pid: number | undefined;
-
+  output: [LuaBody["signal"], ...string[]];
+  pid?: number;
   stdout: string[];
-
   stderr: string[];
+}
 
-  constructor(
-    status: LuaError["status"],
-    signal: LuaError["signal"],
-    pid: LuaError["pid"],
-    stdout: LuaError["stdout"],
-    stderr: LuaError["stderr"]
-  ) {
-    super(`process exit with code: ${status}, signal: ${signal}`);
+export class LuaError extends Error {
+  readonly data: LuaBody;
 
-    this.status = status;
-    this.signal = signal;
-    this.pid = pid;
-    this.stdout = stdout;
-    this.stderr = stderr;
+  constructor(data: LuaBody) {
+    const output = [...data.output];
+    output.shift();
+    super(output.join("\r\n"));
+    this.data = data;
   }
 }
 
@@ -54,7 +44,31 @@ const argsConcat = (options: LuaOptions) => {
   return argsArray;
 };
 
-export const run = (options: LuaOptions) => {
+const formatter = (str: string) => {
+  const arr = str.split("\r\n");
+  arr.pop();
+  return arr;
+};
+
+const setBody = (
+  status: LuaBody["status"],
+  signal: LuaBody["signal"],
+  pid: LuaBody["pid"],
+  output: LuaBody["output"],
+  stderr: LuaBody["stderr"],
+  stdout: LuaBody["stdout"]
+): LuaBody => {
+  return {
+    status,
+    signal,
+    pid,
+    output,
+    stderr,
+    stdout,
+  };
+};
+
+export const run = (options: LuaOptions, childOptions) => {
   const result = spawnSync(
     getInterpretator(options.luaPath),
     argsConcat(options),
@@ -64,77 +78,66 @@ export const run = (options: LuaOptions) => {
     }
   );
 
-  return result;
+  const output = result.output as LuaBody["output"];
+
+  return setBody(
+    result.status,
+    result.signal,
+    result.pid,
+    output,
+    formatter(result.stderr),
+    formatter(result.stdout)
+  );
 };
 
-class NewlineTransformer extends Transform {
-  // NewlineTransformer: Megatron's little known once-removed cousin
-  private _lastLineData: string | undefined;
-
-  // eslint-disable-next-line no-underscore-dangle
-  _transform(chunk: any, _encoding: string, callback: TransformCallback) {
-    let data: string = chunk.toString();
-    // eslint-disable-next-line no-underscore-dangle
-    if (this._lastLineData) data = this._lastLineData + data;
-    const lines = data.split(newline);
-    // eslint-disable-next-line no-underscore-dangle
-    this._lastLineData = lines.pop();
-    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
-    // @ts-ignore
-    lines.forEach(this.push.bind(this));
-    callback();
-  }
-
-  // eslint-disable-next-line no-underscore-dangle
-  _flush(done: TransformCallback) {
-    // eslint-disable-next-line no-underscore-dangle
-    if (this._lastLineData) this.push(this._lastLineData);
-    // eslint-disable-next-line no-underscore-dangle
-    this._lastLineData = undefined;
-    done();
-  }
-}
-
 export const runAsync = (options: LuaOptions) => {
-  return new Promise<string[]>((resolve, reject) => {
+  return new Promise<LuaBody>((resolve, reject) => {
     const result = spawn(
       getInterpretator(options.luaPath),
       argsConcat(options)
     );
 
-    const out = {
+    const std: {
+      stdout: LuaBody["stdout"];
+      stderr: LuaBody["stderr"];
+      stdoutOriginal: string[];
+      stderrOriginal: string[];
+    } = {
       stdout: [],
       stderr: [],
+      stdoutOriginal: [],
+      stderrOriginal: [],
     };
 
-    // const stdout: string[] = [];
-    // const stderr: string[] = [];
-
-    // (["stdout", "stderr"] as const).forEach((key) => {
-    //   result[key].on("data", (data: Buffer) => {
-    //     out[key] = data.toString("utf-8");
-    //   });
-    // });
-
-    const stdoutSplitter = new NewlineTransformer();
-    result.stdout.pipe(stdoutSplitter).on("data", (aaa) => {
-      console.log(aaa);
+    (["stdout", "stderr"] as const).forEach((key) => {
+      result[key].on("data", (data: Buffer) => {
+        const str = data.toString("utf-8");
+        const strArray = formatter(str);
+        std[key].push(...strArray);
+        std[`${key}Original`].push(str);
+      });
     });
 
-    // result.stdout.on("data", (data: Buffer) =>
-    //   stdout.push(data.toString("utf-8"))
-    // );
-
-    // result.stderr.on("data", (data: Buffer) =>
-    //   stderr.push(data.toString("utf-8"))
-    // );
-
     result.on("close", (code, signal) => {
+      const output: LuaBody["output"] = [signal];
+
+      // у spawn метода имеется вывод пустого output
+      if (std.stdout.length === 0) output.push("");
+      output.push(...std.stdoutOriginal, ...std.stderrOriginal);
+
+      const out: LuaBody = {
+        status: code,
+        signal,
+        pid: result.pid,
+        output,
+        stderr: std.stderr,
+        stdout: std.stdout,
+      };
+
       if (code === 0) {
-        resolve(out.stdout);
+        resolve(out);
       } else {
-        const { pid } = result;
-        reject(new LuaError(code, signal, pid, out.stdout, out.stderr));
+        reject(new LuaError(out));
       }
     });
   });
@@ -153,4 +156,4 @@ export const runAsyncString = (
 export class Lua {}
 
 // рассказать про параметры spawn, например timeout
-// указание формата данныж. Если текст, то кодировка
+// указание формата данныж. Если текст, то кодировка и форматтер
