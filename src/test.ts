@@ -21,21 +21,21 @@ import test from ".";
   //   console.log("error", error);
   // }
 
-  const result = test.run({ scriptPath: "dist/lua/error.lua" });
-  const result2 = test.run(
-    { scriptPath: "dist/lua/print.lua" },
-    { encoding: "buffer" }
+  const result = test.run(
+    { scriptPath: "bufferdist/lua/error.lua" },
+    { encoding: "utf8" }
   );
-  // const result = test.run({ scriptPath: "dist/lua/threads.lua" });
-  // const result = test.run({ scriptPath: "dist/lua/timeout.lua" });
+  // const result = test.run({ scriptPath: "dist/lua/print.lua" }, { encoding: "utf8" });
+  // const result = test.run({ scriptPath: "dist/lua/threads.lua" }, { encoding: "utf8" });
+  // const result = test.run({ scriptPath: "dist/lua/timeout.lua" }, { encoding: "utf8" });
   console.log(result);
 
   try {
-    const result2 = await test.runAsync({ scriptPath: "dist/lua/error.lua" });
-    // const result2 = await test.runAsync({ scriptPath: "dist/lua/print.lua" });
-    // const result2 = await test.runAsync({ scriptPath: "dist/lua/threads.lua" });
-    // const result2 = await test.runAsync({ scriptPath: "dist/lua/timeout.lua" });
-    console.log("result", result2);
+    // const result2 = await test.runAsync({ scriptPath: "dist/lua/error.lua" }, { encoding: "utf8" });
+    // const result2 = await test.runAsync({ scriptPath: "dist/lua/print.lua" }, { encoding: "utf8" });
+    // const result2 = await test.runAsync({ scriptPath: "dist/lua/threads.lua" }, { encoding: "utf8" });
+    // const result2 = await test.runAsync({ scriptPath: "dist/lua/timeout.lua" }, { encoding: "utf8" });
+    // console.log("result", result2);
   } catch (error) {
     console.log("error", error);
   }
