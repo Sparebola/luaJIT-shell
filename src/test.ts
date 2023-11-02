@@ -22,7 +22,10 @@ import test from ".";
   // }
 
   const result = test.run({ scriptPath: "dist/lua/error.lua" });
-  // const result = test.run({ scriptPath: "dist/lua/print.lua" });
+  const result2 = test.run(
+    { scriptPath: "dist/lua/print.lua" },
+    { encoding: "buffer" }
+  );
   // const result = test.run({ scriptPath: "dist/lua/threads.lua" });
   // const result = test.run({ scriptPath: "dist/lua/timeout.lua" });
   console.log(result);
