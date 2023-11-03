@@ -5,13 +5,17 @@ import {
   SpawnSyncOptionsWithStringEncoding,
   SpawnSyncOptionsWithBufferEncoding,
   SpawnOptionsWithoutStdio,
+  ChildProcessWithoutNullStreams,
 } from "child_process";
+
+export type Parser = (str: string) => string[];
 
 export interface LuaOptions {
   scriptPath?: string;
   luaPath?: string;
   luaOptions?: string[];
   args?: string[];
+  parser?: Parser;
 }
 
 export interface LuaBody {
@@ -46,16 +50,19 @@ export class LuaError extends Error {
   readonly data: LuaBodyStringEncoding | LuaBodyBufferEncoding;
 
   constructor(data: LuaError["data"]) {
-    // если установлена кодировка
-    if (Array.isArray(data.stdout)) {
-      const output = [...data.output];
-      output.shift();
-      super(output.join("\r\n"));
-    } else {
-      super(`process exited with code ${data.status}`);
-    }
+    super(`process exited with code ${data.status}`);
     this.data = data;
   }
+}
+
+interface StdBuffer {
+  stdout: LuaBodyBufferEncoding["stdout"];
+  stderr: LuaBodyBufferEncoding["stderr"];
+}
+
+interface StdString {
+  stdout: LuaBodyStringEncoding["stdout"];
+  stderr: LuaBodyStringEncoding["stderr"];
 }
 
 const getInterpretator = (luaPath: LuaOptions["luaPath"]) => {
@@ -74,19 +81,19 @@ const argsConcat = (options: LuaOptions) => {
   return argsArray;
 };
 
-const formatter = (str: string) => {
+const defaultParser = (str: string) => {
   const arr = str.split("\r\n");
   arr.pop();
   return arr;
 };
 
-export function run(options: LuaOptions): LuaBodyBufferEncoding;
+export function run(options: Omit<LuaOptions, "parser">): LuaBodyBufferEncoding;
 export function run(
   options: LuaOptions,
   childOptions: SpawnSyncOptionsWithStringEncoding
 ): LuaBodyStringEncoding;
 export function run(
-  options: LuaOptions,
+  options: Omit<LuaOptions, "parser">,
   childOptions: SpawnSyncOptionsWithBufferEncoding
 ): LuaBodyBufferEncoding;
 export function run(
@@ -105,12 +112,61 @@ export function run(
     return result as LuaBodyBufferEncoding;
   }
 
+  const parser = options?.parser || defaultParser;
+
   return {
     ...result,
-    stderr: formatter(result.stderr as string),
-    stdout: formatter(result.stdout as string),
+    stderr: parser(result.stderr as string),
+    stdout: parser(result.stdout as string),
   } as LuaBodyStringEncoding;
 }
+
+const stdSyncStringParser = (std: string[], parser: Parser) => {
+  const arr: string[] = [];
+  std.forEach((str) => {
+    return arr.push(...parser(str));
+  });
+  return arr;
+};
+
+const promiseAsyncHandler =
+  <T extends StdBuffer | StdString>(
+    process: ChildProcessWithoutNullStreams,
+    std: T,
+    parser: Parser
+  ) =>
+  <K extends LuaBodyStringEncoding | LuaBodyBufferEncoding>(
+    resolve: (value: K | PromiseLike<K>) => void,
+    reject: (reason?: LuaError) => void
+  ) => {
+    process.on("close", (code, signal) => {
+      const out = {
+        status: code,
+        signal,
+        pid: process.pid,
+      } as K;
+
+      if (Buffer.isBuffer(std.stderr) && Buffer.isBuffer(std.stdout)) {
+        out.output = [signal, std.stdout, std.stderr] as K["output"];
+        out.stdout = std.stdout;
+        out.stderr = std.stderr;
+      } else if (Array.isArray(std.stderr) && Array.isArray(std.stdout)) {
+        // у spawn метода имеется вывод пустого output и stderr
+        if (std.stdout.length === 0) std.stdout.push("");
+        if (std.stderr.length === 0) std.stderr.push("");
+
+        out.output = [signal, ...std.stdout, ...std.stderr] as K["output"];
+        out.stdout = stdSyncStringParser(std.stdout, parser);
+        out.stderr = stdSyncStringParser(std.stderr, parser);
+      }
+
+      if (code === 0) {
+        resolve(out);
+      } else {
+        reject(new LuaError(out));
+      }
+    });
+  };
 
 export function runAsync(options: LuaOptions): Promise<LuaBodyBufferEncoding>;
 export function runAsync(
@@ -131,9 +187,17 @@ export function runAsync(
     childOptions
   );
 
-  const std: {
-    stdout: LuaBodyStringEncoding["stdout"] | LuaBodyBufferEncoding["stdout"];
-    stderr: LuaBodyStringEncoding["stderr"] | LuaBodyBufferEncoding["stderr"];
+  const stdBuffer: {
+    stdout: LuaBodyBufferEncoding["stdout"];
+    stderr: LuaBodyBufferEncoding["stderr"];
+  } = {
+    stdout: Buffer.alloc(0),
+    stderr: Buffer.alloc(0),
+  };
+
+  const stdString: {
+    stdout: LuaBodyStringEncoding["stdout"];
+    stderr: LuaBodyStringEncoding["stderr"];
   } = {
     stdout: [],
     stderr: [],
@@ -141,65 +205,25 @@ export function runAsync(
 
   (["stdout", "stderr"] as const).forEach((key) => {
     result[key].on("data", (data: Buffer) => {
-      // const str = data.toString("utf-8");
-      // const strArray = formatter(str);
-      // std[key].push(...strArray);
-      // std[`${key}Original`].push(str);
-      // std[key].push(data);
+      if (!childOptions || childOptions.encoding === "buffer") {
+        stdBuffer[key] = Buffer.concat([stdBuffer[key], data]);
+      } else {
+        stdString[key].push(data.toString(childOptions.encoding || "utf8"));
+      }
     });
   });
 
-  // const result = spawn(
-  //   getInterpretator(options.luaPath),
-  //   argsConcat(options),
-  //   childOptions
-  // );
+  const parser = options?.parser || defaultParser;
 
-  // const std: {
-  //   stdout: LuaBodyStringEncoding["stdout"];
-  //   stderr: LuaBodyStringEncoding["stderr"];
-  //   stdoutOriginal: string[];
-  //   stderrOriginal: string[];
-  // } = {
-  //   stdout: [],
-  //   stderr: [],
-  //   stdoutOriginal: [],
-  //   stderrOriginal: [],
-  // };
+  if (!childOptions || childOptions.encoding === "buffer") {
+    return new Promise<LuaBodyBufferEncoding>(
+      promiseAsyncHandler(result, stdBuffer, parser)
+    );
+  }
 
-  // (["stdout", "stderr"] as const).forEach((key) => {
-  //   result[key].on("data", (data: Buffer) => {
-  //     const str = data.toString("utf-8");
-  //     const strArray = formatter(str);
-  //     std[key].push(...strArray);
-  //     std[`${key}Original`].push(str);
-  //   });
-  // });
-
-  // return new Promise<LuaBodyStringEncoding>((resolve, reject) => {
-  //   result.on("close", (code, signal) => {
-  //     const output: LuaBodyStringEncoding["output"] = [signal];
-
-  //     // у spawn метода имеется вывод пустого output
-  //     if (std.stdout.length === 0) output.push("");
-  //     output.push(...std.stdoutOriginal, ...std.stderrOriginal);
-
-  //     const out: LuaBodyStringEncoding = {
-  //       status: code,
-  //       signal,
-  //       pid: result.pid,
-  //       output,
-  //       stderr: std.stderr,
-  //       stdout: std.stdout,
-  //     };
-
-  //     if (code === 0) {
-  //       resolve(out);
-  //     } else {
-  //       reject(new LuaError(out));
-  //     }
-  //   });
-  // });
+  return new Promise<LuaBodyStringEncoding>(
+    promiseAsyncHandler(result, stdBuffer, parser)
+  );
 }
 
 export const runString = (
@@ -215,4 +239,3 @@ export const runAsyncString = (
 export class Lua {}
 
 // рассказать про параметры spawn, например timeout
-// указание формата данныж. Если текст, то кодировка и форматтер
