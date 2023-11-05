@@ -1,6 +1,10 @@
+io.output():setvbuf("no")
+
 local queue = {}
 Tasking = {
-	wait = function(time) coroutine.yield(time / 1000) end
+	wait = function(time)
+		coroutine.yield(time / 1000)
+	end,
 }
 
 local function halt(self)
@@ -12,13 +16,16 @@ local function resume(self)
 end
 
 function Tasking.new(f, halted)
-	if halted == nil then halted = false end
+	if halted == nil then
+		halted = false
+	end
 	local current_time = os.clock()
-	local task = { 
-		f = coroutine.create(f), 
-		wake_time = current_time, halted = halted, 
-		halt = halt, 
-		resume = resume
+	local task = {
+		f = coroutine.create(f),
+		wake_time = current_time,
+		halted = halted,
+		halt = halt,
+		resume = resume,
 	}
 	table.insert(queue, task)
 	return queue[#queue]
@@ -26,16 +33,16 @@ end
 
 local BREAK = false
 Tasking.new(function()
-    print(1)
-    Tasking.wait(1000)
-    print(2)
-    BREAK = true
+	print("start")
+	Tasking.wait(1000)
+	print(io.read())
+	BREAK = true
 end)
 
 while not BREAK do
 	for idx, task in pairs(queue) do
 		if task.wake_time < os.clock() and not task.halted then
-			if coroutine.status(task.f) == 'dead' then
+			if coroutine.status(task.f) == "dead" then
 				queue[idx] = nil
 			else
 				local resumed, result = coroutine.resume(task.f)

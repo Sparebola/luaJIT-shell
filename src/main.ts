@@ -1,4 +1,3 @@
-// eslint-disable-next-line max-classes-per-file
 import {
   spawn,
   spawnSync,
@@ -8,84 +7,24 @@ import {
   ChildProcessWithoutNullStreams,
 } from "child_process";
 
-export type Parser = (str: string) => string[];
-
-export interface LuaOptions {
-  scriptPath?: string;
-  luaPath?: string;
-  luaOptions?: string[];
-  args?: string[];
-  parser?: Parser;
-}
-
-export interface LuaBody {
-  status: number | null;
-  signal: NodeJS.Signals | null;
-  pid?: number;
-}
-
-export interface LuaBodyStringEncoding extends LuaBody {
-  output: [LuaBody["signal"], ...string[]];
-  stdout: string[];
-  stderr: string[];
-}
-
-export interface LuaBodyBufferEncoding extends LuaBody {
-  output: [LuaBody["signal"], ...Buffer[]];
-  stdout: Buffer;
-  stderr: Buffer;
-}
-
-export interface SpawnOptionsWithStringEncoding
-  extends SpawnOptionsWithoutStdio {
-  encoding: BufferEncoding;
-}
-
-export interface SpawnOptionsWithBufferEncoding
-  extends SpawnOptionsWithoutStdio {
-  encoding?: "buffer";
-}
-
-export class LuaError extends Error {
-  readonly data: LuaBodyStringEncoding | LuaBodyBufferEncoding;
-
-  constructor(data: LuaError["data"]) {
-    super(`process exited with code ${data.status}`);
-    this.data = data;
-  }
-}
-
-interface StdBuffer {
-  stdout: LuaBodyBufferEncoding["stdout"];
-  stderr: LuaBodyBufferEncoding["stderr"];
-}
-
-interface StdString {
-  stdout: LuaBodyStringEncoding["stdout"];
-  stderr: LuaBodyStringEncoding["stderr"];
-}
-
-const getInterpretator = (luaPath: LuaOptions["luaPath"]) => {
-  // FIXME: luajit
-  return luaPath ?? "luajit21";
-};
-
-const argsConcat = (options: LuaOptions) => {
-  const argsArray: string[] = [];
-  const { luaOptions, scriptPath, args } = options;
-
-  if (luaOptions) argsArray.push(...luaOptions);
-  if (scriptPath) argsArray.push(scriptPath);
-  if (args) argsArray.push(...args);
-
-  return argsArray;
-};
-
-const defaultParser = (str: string) => {
-  const arr = str.split("\r\n");
-  arr.pop();
-  return arr;
-};
+import { RequiredBy } from "./utility";
+import {
+  Parser,
+  LuaOptions,
+  LuaBodyStringEncoding,
+  LuaBodyBufferEncoding,
+  SpawnOptionsWithStringEncoding,
+  SpawnOptionsWithBufferEncoding,
+  StdBuffer,
+  StdString,
+} from "./types";
+import {
+  getInterpretator,
+  argsConcat,
+  defaultParser,
+  stdSyncStringParser,
+} from "./helpers";
+import LuaError from "./exceptoins/luaError";
 
 export function run(options: Omit<LuaOptions, "parser">): LuaBodyBufferEncoding;
 export function run(
@@ -120,14 +59,6 @@ export function run(
     stdout: parser(result.stdout as string),
   } as LuaBodyStringEncoding;
 }
-
-const stdSyncStringParser = (std: string[], parser: Parser) => {
-  const arr: string[] = [];
-  std.forEach((str) => {
-    return arr.push(...parser(str));
-  });
-  return arr;
-};
 
 const promiseAsyncHandler =
   <T extends StdBuffer | StdString>(
@@ -168,13 +99,15 @@ const promiseAsyncHandler =
     });
   };
 
-export function runAsync(options: LuaOptions): Promise<LuaBodyBufferEncoding>;
+export function runAsync(
+  options: Omit<LuaOptions, "parser">
+): Promise<LuaBodyBufferEncoding>;
 export function runAsync(
   options: LuaOptions,
   childOptions: SpawnOptionsWithStringEncoding
 ): Promise<LuaBodyStringEncoding>;
 export function runAsync(
-  options: LuaOptions,
+  options: Omit<LuaOptions, "parser">,
   childOptions: SpawnOptionsWithBufferEncoding
 ): Promise<LuaBodyBufferEncoding>;
 export function runAsync(
@@ -222,7 +155,7 @@ export function runAsync(
   }
 
   return new Promise<LuaBodyStringEncoding>(
-    promiseAsyncHandler(result, stdBuffer, parser)
+    promiseAsyncHandler(result, stdString, parser)
   );
 }
 
@@ -236,6 +169,11 @@ export const runAsyncString = (
   options?: Omit<LuaOptions, "luaOptions">
 ) => runAsync({ ...options, luaOptions: [`-e ${string}`] });
 
-export class Lua {}
+export const createLua = (
+  options: RequiredBy<Omit<LuaOptions, "parser">, "scriptPath">,
+  childOptions?: SpawnOptionsWithoutStdio
+) =>
+  spawn(getInterpretator(options.luaPath), argsConcat(options), childOptions);
 
 // рассказать про параметры spawn, например timeout
+// рассказать про io.flush() или io.output():setvbuf("no")
