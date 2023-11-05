@@ -24,7 +24,7 @@ import {
   defaultParser,
   stdSyncStringParser,
 } from "./helpers";
-import LuaError from "./exceptoins/luaError";
+import { LuaError } from "./exceptoins/luaError";
 
 export function run(options: Omit<LuaOptions, "parser">): LuaBodyBufferEncoding;
 export function run(

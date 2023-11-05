@@ -4,6 +4,7 @@ export const getInterpretator = (luaPath: LuaOptions["luaPath"]) => {
   // FIXME: luajit
   return luaPath ?? "luajit21";
 };
+
 export const argsConcat = (options: LuaOptions) => {
   const argsArray: string[] = [];
   const { luaOptions, scriptPath, args } = options;
@@ -14,11 +15,13 @@ export const argsConcat = (options: LuaOptions) => {
 
   return argsArray;
 };
+
 export const defaultParser = (str: string) => {
   const arr = str.split("\r\n");
   arr.pop();
   return arr;
 };
+
 export const stdSyncStringParser = (std: string[], parser: Parser) => {
   const arr: string[] = [];
   std.forEach((str) => {
