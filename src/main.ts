@@ -1,6 +1,7 @@
 import {
   spawn,
   spawnSync,
+  SpawnSyncOptions,
   SpawnSyncOptionsWithStringEncoding,
   SpawnSyncOptionsWithBufferEncoding,
   SpawnOptionsWithoutStdio,
@@ -27,6 +28,10 @@ import {
 import { LuaError } from "./exceptoins/luaError";
 
 export function run(options: Omit<LuaOptions, "parser">): LuaBodyBufferEncoding;
+export function run(
+  options: Omit<LuaOptions, "parser">,
+  childOptions?: Omit<SpawnSyncOptions, "encoding">
+): LuaBodyBufferEncoding;
 export function run(
   options: LuaOptions,
   childOptions: SpawnSyncOptionsWithStringEncoding
@@ -104,6 +109,10 @@ export function runAsync(
 ): Promise<LuaBodyBufferEncoding>;
 export function runAsync(
   options: LuaOptions,
+  childOptions?: Omit<SpawnOptionsWithoutStdio, "encoding">
+): Promise<LuaBodyBufferEncoding>;
+export function runAsync(
+  options: LuaOptions,
   childOptions: SpawnOptionsWithStringEncoding
 ): Promise<LuaBodyStringEncoding>;
 export function runAsync(
@@ -159,15 +168,63 @@ export function runAsync(
   );
 }
 
-export const runString = (
+export function runString(string: string): LuaBodyBufferEncoding;
+export function runString(
   string: string,
-  options?: Omit<LuaOptions, "luaOptions">
-) => run({ ...options, luaOptions: [`-e ${string}`] });
+  options?: Omit<LuaOptions, "parser" | "luaOptions">
+): LuaBodyBufferEncoding;
+export function runString(
+  string: string,
+  options: Omit<LuaOptions, "parser" | "luaOptions">,
+  childOptions?: Omit<SpawnSyncOptions, "encoding">
+): LuaBodyBufferEncoding;
+export function runString(
+  string: string,
+  options: Omit<LuaOptions, "luaOptions">,
+  childOptions: SpawnSyncOptionsWithStringEncoding
+): LuaBodyStringEncoding;
+export function runString(
+  string: string,
+  options: Omit<LuaOptions, "parser" | "luaOptions">,
+  childOptions: SpawnSyncOptionsWithBufferEncoding
+): LuaBodyBufferEncoding;
+export function runString(
+  string: string,
+  options?: Omit<LuaOptions, "luaOptions">,
+  childOptions?:
+    | SpawnSyncOptionsWithStringEncoding
+    | SpawnSyncOptionsWithBufferEncoding
+): LuaBodyStringEncoding | LuaBodyBufferEncoding {
+  return run({ ...options, luaOptions: [`-e ${string}`] }, childOptions);
+}
 
-export const runAsyncString = (
+export function runAsyncString(string: string): Promise<LuaBodyBufferEncoding>;
+export function runAsyncString(
   string: string,
-  options?: Omit<LuaOptions, "luaOptions">
-) => runAsync({ ...options, luaOptions: [`-e ${string}`] });
+  options?: Omit<LuaOptions, "parser" | "luaOptions">
+): Promise<LuaBodyBufferEncoding>;
+export function runAsyncString(
+  string: string,
+  options: Omit<LuaOptions, "parser" | "luaOptions">,
+  childOptions?: Omit<SpawnOptionsWithoutStdio, "encoding">
+): Promise<LuaBodyBufferEncoding>;
+export function runAsyncString(
+  string: string,
+  options: Omit<LuaOptions, "luaOptions">,
+  childOptions: SpawnOptionsWithStringEncoding
+): Promise<LuaBodyStringEncoding>;
+export function runAsyncString(
+  string: string,
+  options: Omit<LuaOptions, "parser" | "luaOptions">,
+  childOptions: SpawnOptionsWithBufferEncoding
+): Promise<LuaBodyBufferEncoding>;
+export function runAsyncString(
+  string: string,
+  options?: Omit<LuaOptions, "luaOptions">,
+  childOptions?: SpawnOptionsWithStringEncoding | SpawnOptionsWithBufferEncoding
+): Promise<LuaBodyStringEncoding | LuaBodyBufferEncoding> {
+  return runAsync({ ...options, luaOptions: [`-e ${string}`] }, childOptions);
+}
 
 export const createLua = (
   options: RequiredBy<Omit<LuaOptions, "parser">, "scriptPath">,
