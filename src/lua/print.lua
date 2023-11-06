@@ -1,5 +1,4 @@
 print(1 + 1)
 print("hello")
-print({ 1, 2, 3 })
 print(arg[1])
 print("333\r\n444\r\n555\r\n")
