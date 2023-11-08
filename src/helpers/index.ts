@@ -1,8 +1,7 @@
 import { LuaOptions, Parser } from "../types";
 
 export const getInterpretator = (luaPath: LuaOptions["luaPath"]) => {
-  // FIXME: luajit
-  return luaPath ?? "luajit21";
+  return luaPath ?? "luajit";
 };
 
 export const argsConcat = (options: LuaOptions) => {

@@ -52,7 +52,11 @@ export function run(
     childOptions
   );
 
-  if (!childOptions || childOptions.encoding === "buffer") {
+  if (
+    !childOptions ||
+    !childOptions.encoding ||
+    childOptions.encoding === "buffer"
+  ) {
     return result as LuaBodyBufferEncoding;
   }
 
@@ -231,6 +235,3 @@ export const createLua = (
   childOptions?: SpawnOptionsWithoutStdio
 ) =>
   spawn(getInterpretator(options.luaPath), argsConcat(options), childOptions);
-
-// рассказать про параметры spawn, например timeout
-// рассказать про io.flush() или io.output():setvbuf("no")
