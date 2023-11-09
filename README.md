@@ -4,7 +4,7 @@ Running Lua | LuaJIT scripts from Node.js | Bun via stdio. With support for sync
 
 # Requirements
 
-You must have the lua interpreter or luaJIT installed and added to the `PATH`. To check, write lua or luaajit in cmd. Alternatively, you can specify a foreign interpreter or path to it in [options.luaPath](LuaOptions)
+You must have the lua interpreter or luaJIT installed and added to the `PATH`. To check, write lua or luaajit in cmd. Alternatively, you can specify a foreign interpreter or path to it in [options.luaPath](#luaoptions)
 
 # Installation
 
@@ -42,7 +42,7 @@ Run the script in synchronous mode:
 const result = run({ scriptPath: "lua/print.lua" }, { encoding: "utf8" });
 ```
 
-###### result: [LuaBodyStringEncoding](LuaBody)
+###### result: [LuaBodyStringEncoding](#luabody)
 
 Asynchronous promis:
 
@@ -56,13 +56,13 @@ runAsync({ scriptPath: "lua/print.lua" }, { timeout: 1000 })
   .catch((error) => console.log("error", error));
 ```
 
-###### result: [LuaBodyBufferEncoding](LuaBody), because there is no coding
+###### result: [LuaBodyBufferEncoding](#luabody), because there is no coding
 
 # API
 
 ### `run(options, childOptions)`
 
-- `options`: [LuaOptions](LuaOptions)
+- `options`: [LuaOptions](#luaoptions)
 - `childOptions`: [child sync options](https://nodejs.org/api/child_process.html#child_processspawnsynccommand-args-options). Supports encoding.
 
 ```javascript
@@ -76,9 +76,9 @@ const result = run(
 
 ### `runAsync(options, childOptions)`
 
-Same as [run](run), except it returns `Promise`
+Same as [run](#run), except it returns `Promise`
 
-- `options`: [LuaOptions](LuaOptions)
+- `options`: [LuaOptions](#luaoptions)
 - `childOptions`: [child async options](https://nodejs.org/api/child_process.html#child_processspawncommand-args-options). Supports encoding.
 
 ```javascript
@@ -103,7 +103,7 @@ const result = runAsync(
 Runs the entered line of code
 
 - `string`: lua code
-- `options`: [LuaOptions](LuaOptions) without `luaOptions`
+- `options`: [LuaOptions](#luaoptions) without `luaOptions`
 - `childOptions`: [child sync options](https://nodejs.org/api/child_process.html#child_processspawnsynccommand-args-options). Supports encoding.
 
 ```javascript
@@ -112,10 +112,10 @@ const result = runString("print(1)", {}, { encoding: "utf8" });
 
 ### `runAsyncString(string, options, childOptions)`
 
-Same as [runString](runString), except it returns `Promise`
+Same as [runString](#runstring), except it returns `Promise`
 
 - `string`: lua code
-- `options`: [LuaOptions](LuaOptions) without `luaOptions`
+- `options`: [LuaOptions](#luaoptions) without `luaOptions`
 - `childOptions`: [child async options](https://nodejs.org/api/child_process.html#child_processspawncommand-args-options). Supports encoding.
 
 ```javascript
@@ -128,7 +128,7 @@ runAsyncString("os.exit(1)")
 
 Creates and returns a pure std stream
 
-- `options`: [LuaOptions](LuaOptions) without `parser` support and mandatory `scriptPath` property
+- `options`: [LuaOptions](#luaoptions) without `parser` support and mandatory `scriptPath` property
 - `childOptions`: [child async options](https://nodejs.org/api/child_process.html#child_processspawncommand-args-options). Supports encoding.
 
 **Note!** To receive messages without buffering, use `io.output():setvbuf("no")` or `io.flush()` after `print()` in the lua script.
@@ -154,7 +154,7 @@ lua.on("close", (code) => {
 ## LuaError
 
 Called exception on lua error. Consists of one property:<br/>
-data: [LuaBodyStringEncoding](LuaBody) | [LuaBodyBufferEncoding](LuaBody)
+data: [LuaBodyStringEncoding](#luabody) | [LuaBodyBufferEncoding](#luabody)
 
 ```javascript
 try {
