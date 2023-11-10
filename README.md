@@ -134,7 +134,7 @@ Creates and returns a pure std stream
 **Note!** To receive messages without buffering, use `io.output():setvbuf("no")` or `io.flush()` after `print()` in the lua script.
 
 ```javascript
-const lua = test.createLua({ scriptPath: "lua/threads.lua" });
+const lua = createLua({ scriptPath: "lua/threads.lua" });
 
 lua.stdout.on("data", (data: Buffer) => {
   console.log(`stdout: ${data}`);
