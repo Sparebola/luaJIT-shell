@@ -4,7 +4,7 @@ Running Lua | LuaJIT scripts from Node.js | Bun via stdio. With support for sync
 
 # Requirements
 
-You must have the lua interpreter or luaJIT installed and added to the `PATH`. To check, write lua or luaajit in cmd. Alternatively, you can specify a foreign interpreter or path to it in [options.luaPath](#luaoptions)
+You must have the lua interpreter or luaJIT installed and added to the `PATH`. To check, write `lua` or `luajit` in cmd. Alternatively, you can specify a foreign interpreter or path to it in [options.luaPath](#luaoptions)
 
 # Installation
 
